@@ -17,13 +17,15 @@ from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator imp
 from spikeinterface import extractors
 from tqdm import tqdm
 
-from ... import ephys_no_curation as ephys
+from ... import ephys_no_curation
 from ... import probe
 
-ephys_mode = os.getenv("EPHYS_MODE", dj.config["custom"].get("ephys_mode", "acute"))
-if ephys_mode != "no-curation":
+
+if ephys_no_curation.schema.is_activated():
+    from ... import ephys_no_curation as ephys
+else:
     raise NotImplementedError(
-        "This export function is designed for the no_curation " + "schema"
+        f"This export function is only designed for the `ephys_no_curation` schema."
     )
 
 
