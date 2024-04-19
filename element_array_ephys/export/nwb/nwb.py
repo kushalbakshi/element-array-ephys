@@ -22,10 +22,10 @@ from ... import probe
 
 
 if ephys_no_curation.schema.is_activated():
-    from ... import ephys_no_curation as ephys
+    ephys = ephys_no_curation
 else:
     raise NotImplementedError(
-        f"This export function is only designed for the `ephys_no_curation` schema."
+        f"This export function is only designed for the `ephys_no_curation` schema. Please make sure this schema has been activated."
     )
 
 
