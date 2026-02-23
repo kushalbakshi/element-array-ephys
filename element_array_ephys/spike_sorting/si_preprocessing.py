@@ -56,7 +56,7 @@ def MBA_infer_map(recording, **infer_map_kwargs):
     recording = si.preprocessing.bandpass_filter(
         recording=recording, freq_min=300, freq_max=6000
     )
-    if recording.get_num_channels <= 32:
+    if recording.get_num_channels() <= 32:
         recording = si.preprocessing.common_reference(
             recording=recording, operator="median"
         )
