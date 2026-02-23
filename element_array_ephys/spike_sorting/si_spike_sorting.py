@@ -5,14 +5,14 @@ If you use this pipeline, please cite SpikeInterface and the relevant sorter(s) 
 """
 
 from datetime import datetime
+from pathlib import Path
 
 import datajoint as dj
-import pandas as pd
 import spikeinterface as si
-from pathlib import Path
-from element_array_ephys import probe, ephys, readers
 from element_interface.utils import find_full_path, memoized_result
-from spikeinterface import exporters, extractors, sorters
+from spikeinterface import exporters, extractors, sorters  # noqa: F401
+
+from element_array_ephys import ephys, probe, readers
 
 from . import si_preprocessing
 
@@ -90,8 +90,18 @@ class PreProcessing(dj.Imported):
         # Get sorter method and create output directory.
         sorter_name = clustering_method.replace(".", "_")
 
+        # Handle alternative preprocessing params structure
+        if "SI_PREPROCESSING_METHOD" in params:
+            preprocessing_method = params.pop("SI_PREPROCESSING_METHOD")
+            params["SI_PREPROCESSING_PARAMS"] = params.get(
+                "SI_PREPROCESSING_PARAMS", {}
+            )
+            params["SI_PREPROCESSING_PARAMS"][
+                "preprocessing_method"
+            ] = preprocessing_method
+
         for required_key in (
-            "SI_PREPROCESSING_METHOD",
+            "SI_PREPROCESSING_PARAMS",
             "SI_SORTING_PARAMS",
             "SI_POSTPROCESSING_PARAMS",
         ):
@@ -128,23 +138,23 @@ class PreProcessing(dj.Imported):
 
         # Create SI recording extractor object
         if acq_software == "SpikeGLX":
-            si_extractor = si.extractors.neoextractors.spikeglx.SpikeGLXRecordingExtractor
+            si_extractor = (
+                si.extractors.neoextractors.spikeglx.SpikeGLXRecordingExtractor
+            )
             spikeglx_meta_filepaths = (
-                ephys.EphysRecording.EphysFile
-                & key
-                & 'file_path LIKE "%.ap.meta"'
+                ephys.EphysRecording.EphysFile & key & 'file_path LIKE "%.ap.meta"'
             ).fetch("file_path")
             ap_bin_filepaths = [
-                find_full_path(ephys.get_ephys_root_data_dir(), Path(f).with_suffix(".bin"))
+                find_full_path(
+                    ephys.get_ephys_root_data_dir(), Path(f).with_suffix(".bin")
+                )
                 for f in spikeglx_meta_filepaths
             ]
 
             si_recs = []
             for ap_bin_filepath in ap_bin_filepaths:
                 data_dir = ap_bin_filepath.parent
-                spikeglx_recording = readers.spikeglx.SpikeGLX(
-                    data_dir
-                )
+                spikeglx_recording = readers.spikeglx.SpikeGLX(data_dir)
                 spikeglx_recording.validate_file("ap")
                 stream_names, stream_ids = si.extractors.get_neo_streams(
                     "spikeglx", folder_path=data_dir
@@ -169,7 +179,9 @@ class PreProcessing(dj.Imported):
                 folder_path=data_dir, stream_name=stream_names[0]
             )
         elif acq_software == "Trellis":
-            si_extractor = si.extractors.neoextractors.blackrock.BlackrockRecordingExtractor
+            si_extractor = (
+                si.extractors.neoextractors.blackrock.BlackrockRecordingExtractor
+            )
 
             nsx5_relpaths = (ephys.EphysRecording.EphysFile & key).fetch("file_path")
             nsx5_fullpaths = [
@@ -190,7 +202,9 @@ class PreProcessing(dj.Imported):
         in_use_chn_ids = si_recording.channel_ids[electrodes_df.channel_idx.values]
         chn2remove = set(si_recording.channel_ids) - set(in_use_chn_ids)
         si_recording = si_recording.remove_channels(list(chn2remove))
-        in_use_chn_ind = [si_recording.channel_ids.tolist().index(chn_id) for chn_id in in_use_chn_ids]
+        in_use_chn_ind = [
+            si_recording.channel_ids.tolist().index(chn_id) for chn_id in in_use_chn_ids
+        ]
         electrodes_df.channel_idx = in_use_chn_ind
         # Create SI probe object
         si_probe = readers.probe_geometry.to_probeinterface(
@@ -200,8 +214,11 @@ class PreProcessing(dj.Imported):
         si_recording.set_probe(probe=si_probe, in_place=True)
 
         # Run preprocessing and save results to output folder
-        si_preproc_func = getattr(si_preprocessing, params["SI_PREPROCESSING_METHOD"])
-        si_recording = si_preproc_func(si_recording)
+        si_preproc_params = params["SI_PREPROCESSING_PARAMS"]
+        si_preproc_func = getattr(
+            si_preprocessing, si_preproc_params.pop("preprocessing_method")
+        )
+        si_recording = si_preproc_func(si_recording, **si_preproc_params)
         si_recording.dump_to_pickle(file_path=recording_file, relative_to=output_dir)
 
         self.insert1(
