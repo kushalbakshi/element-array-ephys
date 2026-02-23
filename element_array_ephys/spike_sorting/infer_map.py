@@ -16,6 +16,10 @@ def infer_map(signal, knn_k=5, scale_method="max", scale_params=None):
     returns:
         X (np.ndarray): channel map coordinates, of shape (n_channels, 2)
     """
+    # default scaling
+    if scale_method == "max" and not scale_params:
+        scale_params = {"max_dist": 350}
+
     C = signal_to_corr(signal)
     D = corr_to_dist(C)
     X = dist_to_coords(D, knn_k)
