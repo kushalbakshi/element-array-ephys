@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.manifold import Isomap
 
 
-def infer_map(signal, CAR_groups, knn_k=5, scale_method="max", scale_params=None):
+def infer_map(signal, knn_k=5, scale_method="max", scale_params=None):
     """Use Isomap algorithm to infer 2D channel map from correlations within signal array
 
     args:
