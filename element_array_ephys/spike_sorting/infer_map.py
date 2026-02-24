@@ -1,6 +1,7 @@
 """Functions to infer a rough channel map from ephys data, used for microwire brush arrays"""
 
 import numpy as np
+from scipy.spatial.distance import pdist
 from sklearn.manifold import Isomap
 
 
@@ -63,17 +64,17 @@ def scale_map(X, scale_method, scale_params):
     See helper functions (scale_by_*) for scale method details
     """
     if scale_method == "radius":
-        return scale_by_radius(X, scale_params["n_chan"], scale_params["r"])
+        return scale_by_radius(X, **scale_params)
     elif scale_method == "max":
-        return scale_by_max(X, scale_params["max_dist"])
+        return scale_by_max(X, **scale_params)
     else:
         raise NotImplementedError(f"{scale_method} is not a valid scale method")
 
 
 def scale_by_radius(X, n_chan, r):
+    """Scale the inferred coordinates (X) so that no more than n_chan channels lie within a circle of radius r (approx.)"""
     from sklearn.neighbors import kneighbors_graph
 
-    """Scale the inferred coordinates (X) so that no more than n_chan channels lie within a circle of radius r (approx.)"""
     G = kneighbors_graph(X, n_chan, mode="distance", include_self=True).toarray()
     # get smallest distance to the n_chan-th nearest neighbor
     min_dist = G.max(axis=1).min()
@@ -84,8 +85,6 @@ def scale_by_radius(X, n_chan, r):
 
 def scale_by_max(X, max_dist):
     """Scale the inferred coordinates (X) so that the maximum distance between any two points is max_dist"""
-    from scipy.spatial.distance import pdist
-
     X = X / pdist(X).max() * max_dist
     return X
 
