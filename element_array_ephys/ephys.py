@@ -1151,7 +1151,7 @@ class CuratedClustering(dj.Imported):
                 logger.info(
                     f"No units found in {sorting_file}. Skipping Unit ingestion..."
                 )
-                return None
+                return (None,)
 
             si_sorting_analyzer_dir = output_dir / sorter_name / "sorting_analyzer"
             sorting_analyzer = si.load_sorting_analyzer(folder=si_sorting_analyzer_dir)
@@ -1299,7 +1299,7 @@ class CuratedClustering(dj.Imported):
                         }
                     )
 
-        return units
+        return (units,)
 
     def make_insert(self, key, units):
         """Insert clustering results, batching units in groups of 64."""
